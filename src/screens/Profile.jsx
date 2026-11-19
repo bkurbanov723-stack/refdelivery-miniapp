@@ -4,7 +4,7 @@ import { errText, useLang, useT } from "../i18n";
 import { toast } from "../tg";
 import { Button, Card } from "../ui";
 
-export default function Profile({ me, mode, switchMode }) {
+export default function Profile({ me, mode, switchMode, onAdmin }) {
   const t = useT();
   const { lang, setLang } = useLang();
   const [busy, setBusy] = useState(false);
@@ -57,6 +57,8 @@ export default function Profile({ me, mode, switchMode }) {
           </div>
         </Card>
       )}
+
+      {onAdmin && <Button onClick={onAdmin}>{t("admin_panel")}</Button>}
 
       <Button variant="secondary" onClick={doSwitch} busy={busy}>
         {mode === "client" ? t("switch_to_driver") : t("switch_to_client")}
