@@ -85,7 +85,7 @@ export default function MapPicker({ title, initial, onPick, onClose }) {
           zoomControl={false}
           style={{ height: "100%", width: "100%" }}
         >
-          <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} subdomains="abcd" maxZoom={20} />
+          <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} maxZoom={20} />
           <MapEvents onMove={(c) => setCenter({ lat: c.lat, lng: c.lng })} />
         </MapContainer>
         <div className="center-pin">📍</div>

@@ -20,7 +20,7 @@ export default function OrderMap({ order, height = 200 }) {
         zoomControl={false}
         style={{ height: "100%", width: "100%" }}
       >
-        <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} subdomains="abcd" maxZoom={20} />
+        <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} maxZoom={20} />
         <CircleMarker center={from} radius={9} pathOptions={dot("#22a06b")} />
         {stops.map((s, i) => <CircleMarker key={i} center={s} radius={8} pathOptions={dot("#e8a317")} />)}
         <CircleMarker center={to} radius={9} pathOptions={dot("#e5484d")} />
