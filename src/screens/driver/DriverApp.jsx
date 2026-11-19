@@ -26,15 +26,38 @@ function useLocationSender(active) {
   }, [active]);
 }
 
+// Tekshiruvdagi haydovchi holatini avtomatik yangilab turamiz (admin tasdiqlashi bilan ochiladi)
+function useStatusWatcher(approved, reload) {
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") reload().catch(() => {});
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    const timer = approved ? null : setInterval(() => reload().catch(() => {}), 15000);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      if (timer) clearInterval(timer);
+    };
+  }, [approved, reload]);
+}
+
 export default function DriverApp({ me, reload, switchMode }) {
   const t = useT();
   const approved = me.driver?.status === "approved";
   const [tab, setTab] = useState(approved ? "orders" : "register");
   useLocationSender(approved && !!me.driver?.is_online);
+  useStatusWatcher(approved, reload);
 
   useEffect(() => {
     if (!approved && (tab === "orders" || tab === "trips")) setTab("register");
   }, [approved, tab]);
+
+  // Tasdiqlangan zahoti buyurtmalar bo'limiga o'tkazamiz
+  const [wasApproved, setWasApproved] = useState(approved);
+  useEffect(() => {
+    if (approved && !wasApproved) setTab("orders");
+    setWasApproved(approved);
+  }, [approved, wasApproved]);
 
   let content;
   if (tab === "profile") content = <Profile me={me} mode="driver" switchMode={switchMode} />;
