@@ -6,9 +6,9 @@ export const API_URL =
 // Xarita boshlanadigan joy — Toshkent markazi
 export const TASHKENT = { lat: 41.2995, lng: 69.2401 };
 
-// Tez ishlaydigan xarita plitkalari (CARTO, OpenStreetMap ma'lumotlari asosida)
-export const TILE_URL = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
-export const TILE_ATTRIBUTION = "© OpenStreetMap © CARTO";
+// Xarita plitkalari (OpenStreetMap, kalit talab qilinmaydi)
+export const TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+export const TILE_ATTRIBUTION = "© OpenStreetMap";
 
 // Bitta buyurtmada eng ko'p qo'shimcha nuqta
 export const MAX_STOPS = 5;
