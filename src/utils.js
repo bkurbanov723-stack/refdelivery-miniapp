@@ -90,7 +90,7 @@ export function detectKind(points, cities) {
   return { kind: "intercity", cityId: null };
 }
 
-export function estimatePrice(refs, { points, body, tempMin, urgent }) {
+export function estimatePrice(refs, { points, body, tempMin, urgent, loaders = 0 }) {
   const { kind, cityId } = detectKind(points, refs.cities);
   const distanceKm = routeDistanceKm(points);
   const stops = Math.max(points.length - 2, 0);
@@ -110,7 +110,12 @@ export function estimatePrice(refs, { points, body, tempMin, urgent }) {
   if (tempMin <= -18) sum *= 1 + Number(t.frozen_surcharge_pct) / 100;
   if (urgent) sum *= 1 + Number(t.urgent_surcharge_pct) / 100;
   sum = Math.max(sum, Number(t.min_price));
+  const loaderPrice = Number(t.loader_price || 0);
+  sum += loaderPrice * loaders;
   return {
+    loaderPrice,
+    freeWait: Number(t.free_wait_min || 0),
+    waitPerMin: Number(t.price_per_wait_min || 0),
     kind,
     distanceKm,
     stops,
@@ -128,3 +133,12 @@ export function orderPoints(o) {
     { lat: o.to_lat, lng: o.to_lng },
   ];
 }
+
+// Ikki nuqta orasidagi masofa va taxminiy yetib kelish vaqti (shaharda o'rtacha 30 km/soat)
+export function etaMinutes(from, to) {
+  if (!from || !to || from.lat == null || to.lat == null) return null;
+  const km = haversineKm(from, to) * 1.3;
+  return Math.max(1, Math.round((km / 30) * 60));
+}
+
+export const minutesSince = (iso) => (iso ? Math.max(0, Math.floor((Date.now() - Date.parse(iso)) / 60000)) : 0);

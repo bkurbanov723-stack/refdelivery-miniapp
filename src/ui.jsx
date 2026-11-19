@@ -118,6 +118,7 @@ export function OrderFacts({ order }) {
       <span>🚛 {t(`size_${order.body_size}`).split(" · ")[0]}</span>
       {order.distance_km != null && <span>📏 {order.distance_km} {t("km")}</span>}
       <span>{t(`kind_${order.kind}`)}</span>
+      {order.loaders > 0 && <span>👷 {order.loaders}</span>}
       {order.is_urgent && <span className="urgent">⚡</span>}
     </div>
   );

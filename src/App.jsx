@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { api } from "./api";
 import { errText, LangContext, useT } from "./i18n";
 import { tg } from "./tg";
@@ -7,6 +7,9 @@ import ClientApp from "./screens/client/ClientApp";
 import DriverApp from "./screens/driver/DriverApp";
 import PhoneScreen from "./screens/PhoneScreen";
 import RoleScreen from "./screens/RoleScreen";
+
+// Admin panel faqat admin uchun yuklanadi
+const AdminApp = lazy(() => import("./screens/AdminApp"));
 
 const MODE_KEY = "rd_mode";
 const readMode = () => {
@@ -24,7 +27,7 @@ const writeMode = (m) => {
   }
 };
 
-function Main({ me, refs, error, mode, chooseMode, reload }) {
+function Main({ me, refs, error, mode, chooseMode, reload, admin, setAdmin }) {
   const t = useT();
 
   if (!tg?.initData) return <Message>{t("only_telegram")}</Message>;
@@ -37,9 +40,17 @@ function Main({ me, refs, error, mode, chooseMode, reload }) {
   }
   if (!me || !refs) return <Loading />;
   if (!me.user.phone) return <PhoneScreen reload={reload} />;
+  if (admin && me.user.role === "admin") {
+    return (
+      <Suspense fallback={<Loading />}>
+        <AdminApp onExit={() => setAdmin(false)} />
+      </Suspense>
+    );
+  }
   if (!mode) return <RoleScreen onChoose={chooseMode} />;
-  if (mode === "driver") return <DriverApp me={me} reload={reload} switchMode={chooseMode} />;
-  return <ClientApp me={me} refs={refs} switchMode={chooseMode} />;
+  const onAdmin = me.user.role === "admin" ? () => setAdmin(true) : null;
+  if (mode === "driver") return <DriverApp me={me} reload={reload} switchMode={chooseMode} onAdmin={onAdmin} />;
+  return <ClientApp me={me} refs={refs} switchMode={chooseMode} onAdmin={onAdmin} />;
 }
 
 export default function App() {
@@ -48,6 +59,7 @@ export default function App() {
   const [refs, setRefs] = useState(null);
   const [error, setError] = useState(null);
   const [mode, setMode] = useState(null);
+  const [admin, setAdmin] = useState(false);
 
   const reload = useCallback(async () => {
     const m = await api("me");
@@ -86,7 +98,8 @@ export default function App() {
   return (
     <LangContext.Provider value={{ lang, setLang }}>
       <div className="app">
-        <Main me={me} refs={refs} error={error} mode={mode} chooseMode={chooseMode} reload={reload} />
+        <Main me={me} refs={refs} error={error} mode={mode} chooseMode={chooseMode} reload={reload}
+          admin={admin} setAdmin={setAdmin} />
       </div>
       <Toaster />
     </LangContext.Provider>

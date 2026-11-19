@@ -12,3 +12,6 @@ export const TILE_ATTRIBUTION = "© OpenStreetMap";
 
 // Bitta buyurtmada eng ko'p qo'shimcha nuqta
 export const MAX_STOPS = 5;
+
+// Bot manzili (haydovchi jonli joylashuvni shu botga ulashadi)
+export const BOT_USERNAME = "ref_delivery_bot";

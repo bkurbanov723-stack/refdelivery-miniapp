@@ -259,3 +259,36 @@ h3 { font-size: 17px; }
 .size-btn:disabled { opacity: 0.35; }
 
 .leaflet-control-attribution { font-size: 9px !important; }
+.stepper-row button:disabled { opacity: 0.25; }
+
+/* --- 3-versiya --- */
+.seg4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.seg4 .chip { text-align: center; padding: 10px 4px; font-size: 13px; }
+.eta-box { background: rgba(14, 165, 233, 0.12); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; }
+.eta-box b { font-size: 17px; }
+.wait-box { background: rgba(232, 163, 23, 0.14); border-radius: 10px; padding: 8px 12px; font-weight: 600; text-align: center; }
+.live-box { background: rgba(14, 165, 233, 0.1); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+.price-lines { display: flex; flex-direction: column; gap: 4px; }
+
+/* Admin panel — kompyuterda keng ko'rinish */
+.admin-wrap { max-width: 980px; margin: 0 auto; }
+.admin-tabs { display: flex; gap: 6px; overflow-x: auto; padding: 12px 12px 0; }
+.admin-tabs button { border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 20px; padding: 8px 14px; font-size: 14px; white-space: nowrap; cursor: pointer; }
+.admin-tabs button.active { background: var(--btn); color: var(--btn-text); border-color: var(--btn); }
+.filter-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.filter-row button { border: 1px solid var(--line); background: var(--bg); color: var(--text); border-radius: 16px; padding: 6px 12px; font-size: 13px; cursor: pointer; }
+.filter-row button.active { border-color: var(--btn); color: var(--btn); font-weight: 600; }
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.stat { background: var(--card); border-radius: var(--radius); padding: 12px; display: flex; flex-direction: column; gap: 4px; }
+.stat b { font-size: 20px; }
+.stat.accent b { color: var(--ok); }
+.tariff-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.tariff-grid .field-label { font-size: 12px; }
+.doc-imgs { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.doc-imgs a { display: flex; flex-direction: column; gap: 4px; color: var(--text); text-decoration: none; font-size: 13px; }
+.doc-imgs img { width: 100%; height: 120px; object-fit: cover; border-radius: 10px; background: var(--bg); }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn-row .btn { flex: 1; min-width: 120px; }
+@media (min-width: 700px) {
+  .admin-list { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+}
