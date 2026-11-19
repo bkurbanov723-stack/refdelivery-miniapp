@@ -40,7 +40,7 @@ export default function MyOrders({ onOpen }) {
           <OrderFacts order={o} />
           <div className="row-between">
             <span className="hint small">{fmtDate(o.pickup_at, lang)}</span>
-            <b>{money(o.price)} {t("sum")}</b>
+            <b>{money(o.final_price ?? o.price)} {t("sum")}</b>
           </div>
         </Card>
       ))}

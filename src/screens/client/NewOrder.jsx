@@ -26,6 +26,7 @@ export default function NewOrder({ refs, onCreated }) {
   const [recName, setRecName] = useState("");
   const [recPhone, setRecPhone] = useState("");
   const [size, setSize] = useState(null);
+  const [loaders, setLoaders] = useState(0);
   const [sending, setSending] = useState(false);
 
   const w = Number(weight);
@@ -36,8 +37,14 @@ export default function NewOrder({ refs, onCreated }) {
   // Narx darhol, serverga bormasdan hisoblanadi
   const est = useMemo(() => {
     if (!ready || !effSize || !(w > 0)) return null;
-    return estimatePrice(refs, { points, body: effSize, tempMin: tMin, urgent });
-  }, [ready, points, effSize, tMin, urgent, refs, w]);
+    return estimatePrice(refs, { points, body: effSize, tempMin: tMin, urgent, loaders });
+  }, [ready, points, effSize, tMin, urgent, refs, w, loaders]);
+
+  // Yuk ortuvchi narxi kuzovga bog'liq (manzillar hali tanlanmagan bo'lsa ham ko'rsatamiz)
+  const loaderPrice = useMemo(() => {
+    const tf = (refs.tariffs || []).find((x) => x.kind === "city" && x.body_size === (effSize || "small"));
+    return Number(tf?.loader_price || 0);
+  }, [refs, effSize]);
 
   const setPoint = (i, p) => setPoints((list) => list.map((x, k) => (k === i ? p : x)));
   const addStop = () => setPoints((list) => [...list.slice(0, -1), null, list[list.length - 1]]);
@@ -68,6 +75,7 @@ export default function NewOrder({ refs, onCreated }) {
         pickup_at: new Date(pickup).toISOString(),
         is_urgent: urgent,
         body_size: effSize,
+        loaders,
         comment,
         recipient_name: recName,
         recipient_phone: recPhone,
@@ -177,6 +185,16 @@ export default function NewOrder({ refs, onCreated }) {
           <input className="input" type="datetime-local" value={pickup} onChange={(e) => setPickup(e.target.value)} />
         </Field>
 
+        <Field label={`${t("loaders")} · ${t("loader_each", { price: money(loaderPrice) })}`}>
+          <div className="seg4">
+            {[0, 1, 2, 3].map((n) => (
+              <button key={n} type="button" className={`chip ${loaders === n ? "active" : ""}`} onClick={() => setLoaders(n)}>
+                {n === 0 ? t("loaders_none") : t("loaders_n", { n })}
+              </button>
+            ))}
+          </div>
+        </Field>
+
         <label className="check">
           <input type="checkbox" checked={urgent} onChange={(e) => setUrgent(e.target.checked)} />
           <span>{t("urgent")}</span>
@@ -203,6 +221,9 @@ export default function NewOrder({ refs, onCreated }) {
               <div className="hint small">
                 {t("price_note", { km: est.included, stop: money(est.perStop) })}
               </div>
+            )}
+            {est.waitPerMin > 0 && (
+              <div className="hint small">{t("wait_note", { free: est.freeWait, price: money(est.waitPerMin) })}</div>
             )}
             <div className="hint small">{t("payment_cash")}</div>
           </>

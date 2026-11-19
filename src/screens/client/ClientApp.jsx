@@ -6,7 +6,7 @@ import MyOrders from "./MyOrders";
 import NewOrder from "./NewOrder";
 import OrderDetail from "./OrderDetail";
 
-export default function ClientApp({ me, refs, switchMode }) {
+export default function ClientApp({ me, refs, switchMode, onAdmin }) {
   const t = useT();
   const [tab, setTab] = useState("new");
   const [openId, setOpenId] = useState(null);
@@ -14,7 +14,7 @@ export default function ClientApp({ me, refs, switchMode }) {
   let content;
   if (tab === "orders" && openId) content = <OrderDetail id={openId} onBack={() => setOpenId(null)} />;
   else if (tab === "orders") content = <MyOrders onOpen={setOpenId} />;
-  else if (tab === "profile") content = <Profile me={me} mode="client" switchMode={switchMode} />;
+  else if (tab === "profile") content = <Profile me={me} mode="client" switchMode={switchMode} onAdmin={onAdmin} />;
   else content = <NewOrder refs={refs} onCreated={(id) => { setOpenId(id); setTab("orders"); }} />;
 
   return (
