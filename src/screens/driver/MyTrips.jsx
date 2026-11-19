@@ -1,9 +1,49 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../../api";
 import { errText, useLang, useT } from "../../i18n";
-import { askConfirm, haptic, openLink, toast } from "../../tg";
+import { BOT_USERNAME } from "../../config";
+import { askConfirm, haptic, openLink, tg, toast } from "../../tg";
 import { Button, Card, Loading, OrderFacts, Route, StatusBadge } from "../../ui";
-import { compressImage, fmtDate, isActive, money, routeUrl } from "../../utils";
+import { compressImage, fmtDate, isActive, minutesSince, money, routeUrl } from "../../utils";
+
+// Faol reys paytida ilova ochiq bo'lsa, joylashuvni har 15 soniyada yuboramiz
+function useTripLocation(active) {
+  useEffect(() => {
+    if (!active || !navigator.geolocation) return;
+    let last = 0;
+    const id = navigator.geolocation.watchPosition(
+      (p) => {
+        if (Date.now() - last < 15000) return;
+        last = Date.now();
+        api("driver_location", { lat: p.coords.latitude, lng: p.coords.longitude }).catch(() => {});
+      },
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 10000 },
+    );
+    return () => navigator.geolocation.clearWatch(id);
+  }, [active]);
+}
+
+// Botga jonli joylashuv ulashish bo'yicha eslatma
+function LiveHint() {
+  const t = useT();
+  const openBot = () => {
+    const url = `https://t.me/${BOT_USERNAME}`;
+    try {
+      if (tg?.openTelegramLink) return tg.openTelegramLink(url);
+    } catch {
+      /* oddiy havola */
+    }
+    openLink(url);
+  };
+  return (
+    <div className="live-box">
+      <b>{t("live_title")}</b>
+      <span className="hint">{t("live_text")}</span>
+      <Button variant="secondary" onClick={openBot}>{t("live_open_bot")}</Button>
+    </div>
+  );
+}
 
 const NEXT = { accepted: "on_the_way", on_the_way: "picked_up", picked_up: "delivered" };
 
@@ -12,7 +52,35 @@ function ActiveTrip({ o, onChanged }) {
   const { lang } = useLang();
   const [busy, setBusy] = useState(false);
   const fileRef = useRef(null);
+  const [, setTick] = useState(0);
+
+  // Qaysi bosqichdamiz: avval "Yetib keldim", keyin keyingi status
+  const atPickup = o.status === "on_the_way" && !o.pickup_arrived_at;
+  const atDrop = o.status === "picked_up" && !o.drop_arrived_at;
+  const needArrive = atPickup || atDrop;
   const next = NEXT[o.status];
+  const waitingSince = o.status === "on_the_way" ? o.pickup_arrived_at : o.status === "picked_up" ? o.drop_arrived_at : null;
+  const freeWait = 15;
+
+  useEffect(() => {
+    if (!waitingSince) return;
+    const timer = setInterval(() => setTick((x) => x + 1), 30000);
+    return () => clearInterval(timer);
+  }, [waitingSince]);
+
+  const arrive = async () => {
+    setBusy(true);
+    try {
+      await api("arrived", { order_id: o.id });
+      haptic("success");
+      await onChanged();
+    } catch (e) {
+      haptic("error");
+      toast(errText(t, e));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const send = async (params) => {
     setBusy(true);
@@ -98,7 +166,14 @@ function ActiveTrip({ o, onChanged }) {
       </div>
 
       <input ref={fileRef} type="file" accept="image/*" capture="environment" hidden onChange={onPhoto} />
-      {next && <Button onClick={onNext} busy={busy}>{t(`next_${next}`)}</Button>}
+      {waitingSince && !needArrive && (
+        <div className="wait-box">{t("waiting", { min: minutesSince(waitingSince), free: freeWait })}</div>
+      )}
+      {needArrive ? (
+        <Button onClick={arrive} busy={busy}>{t(atPickup ? "arrived_pickup" : "arrived_drop")}</Button>
+      ) : (
+        next && <Button onClick={onNext} busy={busy}>{t(`next_${next}`)}</Button>
+      )}
     </Card>
   );
 }
@@ -120,9 +195,11 @@ export default function MyTrips() {
     return () => clearInterval(timer);
   }, [load]);
 
-  if (!data && !error) return <Loading />;
   const active = data?.orders.filter((o) => isActive(o.status)) || [];
   const done = data?.orders.filter((o) => !isActive(o.status)) || [];
+  useTripLocation(active.length > 0);
+
+  if (!data && !error) return <Loading />;
 
   return (
     <div className="page">
@@ -137,6 +214,7 @@ export default function MyTrips() {
 
       <h3>{t("active_trips")}</h3>
       {active.length === 0 && <p className="hint">{t("no_active")}</p>}
+      {active.length > 0 && <LiveHint />}
       {active.map((o) => <ActiveTrip key={o.id} o={o} onChanged={load} />)}
 
       {done.length > 0 && <h3>{t("done_trips")}</h3>}
@@ -149,7 +227,7 @@ export default function MyTrips() {
           <Route order={o} />
           <div className="row-between">
             <span className="hint small">{fmtDate(o.delivered_at || o.created_at, lang)}</span>
-            <span>{money(o.price - o.commission)} {t("sum")}</span>
+            <span>{money((o.final_price ?? o.price) - o.commission)} {t("sum")}</span>
           </div>
         </Card>
       ))}

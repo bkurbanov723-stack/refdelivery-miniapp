@@ -41,7 +41,7 @@ function useStatusWatcher(approved, reload) {
   }, [approved, reload]);
 }
 
-export default function DriverApp({ me, reload, switchMode }) {
+export default function DriverApp({ me, reload, switchMode, onAdmin }) {
   const t = useT();
   const approved = me.driver?.status === "approved";
   const [tab, setTab] = useState(approved ? "orders" : "register");
@@ -60,7 +60,7 @@ export default function DriverApp({ me, reload, switchMode }) {
   }, [approved, wasApproved]);
 
   let content;
-  if (tab === "profile") content = <Profile me={me} mode="driver" switchMode={switchMode} />;
+  if (tab === "profile") content = <Profile me={me} mode="driver" switchMode={switchMode} onAdmin={onAdmin} />;
   else if (tab === "register" || !approved) content = <DriverRegister me={me} reload={reload} />;
   else if (tab === "trips") content = <MyTrips />;
   else content = <AvailableOrders me={me} reload={reload} onAccepted={() => setTab("trips")} />;
