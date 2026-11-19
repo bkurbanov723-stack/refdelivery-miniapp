@@ -1,85 +1,64 @@
+import "leaflet/dist/leaflet.css";
 import { useEffect, useRef, useState } from "react";
 import { MapContainer, TileLayer, useMapEvents } from "react-leaflet";
-import { TASHKENT } from "../config";
-import { reverseGeocode, searchPlaces } from "../geo";
-import { useLang, useT } from "../i18n";
-import { getPosition } from "../utils";
+import { TASHKENT, TILE_ATTRIBUTION, TILE_URL } from "../config";
+import { reverseGeocode } from "../geo";
+import { useT } from "../i18n";
 import { haptic } from "../tg";
 import { Button } from "../ui";
+import { getPosition } from "../utils";
 
-function MoveWatcher({ onMove }) {
-  useMapEvents({ moveend: (e) => onMove(e.target.getCenter()) });
+function MapEvents({ onMove }) {
+  const map = useMapEvents({
+    moveend: () => onMove(map.getCenter()),
+    // Xaritaga bosilsa — o'sha joy markazga keladi
+    click: (e) => map.flyTo(e.latlng, Math.max(map.getZoom(), 16), { duration: 0.3 }),
+  });
   return null;
 }
 
-// To'liq ekranli xarita: foydalanuvchi xaritani suradi, markazdagi 📍 tanlangan joy bo'ladi
+// To'liq ekranli xarita: xaritani surasiz yoki bosasiz, markazdagi 📍 tanlangan joy
 export default function MapPicker({ title, initial, onPick, onClose }) {
   const t = useT();
-  const { lang } = useLang();
   const start = initial || TASHKENT;
   const [map, setMap] = useState(null);
   const [center, setCenter] = useState(start);
   const [address, setAddress] = useState(initial?.address || "");
   const [geocoding, setGeocoding] = useState(false);
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState([]);
-  const skipNextGeocode = useRef(!!initial);
+  const skipNext = useRef(!!initial?.address);
+  const autoLocated = useRef(!!initial);
 
-  // Xarita to'xtagach, markazdagi nuqtaning manzilini olamiz
+  // Boshlang'ich nuqta berilmagan bo'lsa — foydalanuvchi joylashuviga o'tamiz
   useEffect(() => {
-    if (skipNextGeocode.current) {
-      skipNextGeocode.current = false;
+    if (!map || autoLocated.current) return;
+    autoLocated.current = true;
+    getPosition().then((p) => map.setView([p.lat, p.lng], 16)).catch(() => {});
+  }, [map]);
+
+  useEffect(() => {
+    if (skipNext.current) {
+      skipNext.current = false;
       return;
     }
     let alive = true;
     setGeocoding(true);
     const timer = setTimeout(async () => {
-      const a = await reverseGeocode(center.lat, center.lng, lang);
+      const a = await reverseGeocode(center.lat, center.lng);
       if (alive) {
         setAddress(a);
         setGeocoding(false);
       }
-    }, 500);
+    }, 350);
     return () => {
       alive = false;
       clearTimeout(timer);
     };
-  }, [center.lat, center.lng, lang]);
-
-  // Matn bo'yicha qidiruv
-  useEffect(() => {
-    if (query.trim().length < 3) {
-      setResults([]);
-      return;
-    }
-    let alive = true;
-    const timer = setTimeout(async () => {
-      try {
-        const list = await searchPlaces(query.trim(), lang);
-        if (alive) setResults(list);
-      } catch {
-        if (alive) setResults([]);
-      }
-    }, 600);
-    return () => {
-      alive = false;
-      clearTimeout(timer);
-    };
-  }, [query, lang]);
-
-  const goTo = (p, addr) => {
-    if (addr) {
-      skipNextGeocode.current = true;
-      setAddress(addr);
-    }
-    setCenter({ lat: p.lat, lng: p.lng });
-    map?.setView([p.lat, p.lng], 16);
-  };
+  }, [center.lat, center.lng]);
 
   const myLocation = async () => {
     try {
       const p = await getPosition();
-      goTo(p);
+      map?.flyTo([p.lat, p.lng], 17, { duration: 0.4 });
     } catch {
       /* ruxsat berilmagan */
     }
@@ -93,35 +72,9 @@ export default function MapPicker({ title, initial, onPick, onClose }) {
   return (
     <div className="picker">
       <div className="picker-head">
-        <button className="link-btn" onClick={onClose}>{t("close")}</button>
+        <button className="link-btn" onClick={onClose}>{t("back")}</button>
         <b>{title}</b>
         <span style={{ width: 56 }} />
-      </div>
-
-      <div className="picker-search">
-        <input
-          className="input"
-          placeholder={t("search_place")}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-        {results.length > 0 && (
-          <div className="results">
-            {results.map((r, i) => (
-              <button
-                key={i}
-                className="result"
-                onClick={() => {
-                  goTo(r, r.address);
-                  setResults([]);
-                  setQuery("");
-                }}
-              >
-                {r.address}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
       <div className="picker-map">
@@ -130,21 +83,20 @@ export default function MapPicker({ title, initial, onPick, onClose }) {
           center={[start.lat, start.lng]}
           zoom={initial ? 16 : 12}
           zoomControl={false}
-          attributionControl={false}
           style={{ height: "100%", width: "100%" }}
         >
-          <TileLayer url="https://tile.openstreetmap.org/{z}/{x}/{y}.png" maxZoom={19} />
-          <MoveWatcher onMove={(c) => setCenter({ lat: c.lat, lng: c.lng })} />
+          <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} subdomains="abcd" maxZoom={20} />
+          <MapEvents onMove={(c) => setCenter({ lat: c.lat, lng: c.lng })} />
         </MapContainer>
         <div className="center-pin">📍</div>
         <button className="locate-btn" onClick={myLocation}>{t("my_location")}</button>
       </div>
 
       <div className="picker-bottom">
-        <span className="field-label">{t("address")}</span>
+        <span className="field-label">{t("address_hint")}</span>
         <input
           className="input"
-          value={geocoding ? "..." : address}
+          value={geocoding ? "…" : address}
           onChange={(e) => setAddress(e.target.value)}
         />
         <Button onClick={pick} disabled={geocoding}>{t("pick_here")}</Button>

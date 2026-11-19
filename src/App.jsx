@@ -61,7 +61,7 @@ export default function App() {
     if (!tg?.initData) return;
     (async () => {
       try {
-        const [m, r] = await Promise.all([api("me"), api("references")]);
+        const { refs: r, ...m } = await api("init");
         setMe(m);
         setRefs(r);
         setLang(m.user.language === "ru" ? "ru" : "uz");

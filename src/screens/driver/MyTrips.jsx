@@ -83,6 +83,13 @@ function ActiveTrip({ o, onChanged }) {
         </div>
       )}
 
+      {(o.recipient_name || o.recipient_phone) && (
+        <div className="row-between">
+          <span>{t("recipient")}: <b>{o.recipient_name || "—"}</b></span>
+          {o.recipient_phone && <a className="link-btn" href={`tel:${o.recipient_phone}`}>{t("call")}</a>}
+        </div>
+      )}
+
       <div className="grid-2">
         <Button variant="secondary" onClick={() => openLink(routeUrl(o))}>{t("route")}</Button>
         {["accepted", "on_the_way"].includes(o.status) && (

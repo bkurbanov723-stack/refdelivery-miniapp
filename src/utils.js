@@ -60,6 +60,71 @@ export function getPosition() {
 }
 
 export const routeUrl = (o) =>
-  `https://yandex.uz/maps/?rtext=${o.from_lat},${o.from_lng}~${o.to_lat},${o.to_lng}&rtt=auto`;
+  `https://yandex.uz/maps/?rtext=${orderPoints(o).map((p) => `${p.lat},${p.lng}`).join("~")}&rtt=auto`;
 
 export const isActive = (status) => ["accepted", "on_the_way", "picked_up"].includes(status);
+
+// ---------------------------------------------------------------------
+// Narxni ilovaning o'zida darhol hisoblash (server bilan aynan bir xil formula).
+// Yakuniy narxni buyurtma yaratilganda server tasdiqlaydi.
+// ---------------------------------------------------------------------
+function haversineKm(a, b) {
+  const rad = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * rad;
+  const dLng = (b.lng - a.lng) * rad;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLng / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.sqrt(h));
+}
+
+export function routeDistanceKm(points) {
+  let sum = 0;
+  for (let i = 1; i < points.length; i++) sum += haversineKm(points[i - 1], points[i]);
+  return Math.max(Math.round(sum * 1.3 * 10) / 10, 1);
+}
+
+export function detectKind(points, cities) {
+  for (const c of cities || []) {
+    const center = { lat: c.center_lat, lng: c.center_lng };
+    if (points.every((p) => haversineKm(center, p) <= c.radius_km)) return { kind: "city", cityId: c.id };
+  }
+  return { kind: "intercity", cityId: null };
+}
+
+export function estimatePrice(refs, { points, body, tempMin, urgent }) {
+  const { kind, cityId } = detectKind(points, refs.cities);
+  const distanceKm = routeDistanceKm(points);
+  const stops = Math.max(points.length - 2, 0);
+  const t = (refs.tariffs || []).find((x) =>
+    x.kind === kind && x.body_size === body && (kind === "city" ? x.city_id === cityId : x.city_id == null)
+  );
+  if (!t) return { kind, distanceKm, price: null };
+
+  let sum;
+  if (kind === "city") {
+    sum = Number(t.base_price) + Number(t.price_per_km) * Math.max(distanceKm - Number(t.included_km), 0);
+  } else {
+    const tons = { small: 0.5, medium: 1, large: 3.5 }[body];
+    sum = distanceKm * tons * Number(t.intercity_coef);
+  }
+  sum += Number(t.price_per_stop) * stops;
+  if (tempMin <= -18) sum *= 1 + Number(t.frozen_surcharge_pct) / 100;
+  if (urgent) sum *= 1 + Number(t.urgent_surcharge_pct) / 100;
+  sum = Math.max(sum, Number(t.min_price));
+  return {
+    kind,
+    distanceKm,
+    stops,
+    price: Math.round(sum / 1000) * 1000,
+    included: kind === "city" ? Number(t.included_km) : 0,
+    perStop: Number(t.price_per_stop),
+  };
+}
+
+// Yandex Xaritada barcha nuqtalar bo'yicha yo'nalish
+export function orderPoints(o) {
+  return [
+    { lat: o.from_lat, lng: o.from_lng },
+    ...(o.stops || []),
+    { lat: o.to_lat, lng: o.to_lng },
+  ];
+}

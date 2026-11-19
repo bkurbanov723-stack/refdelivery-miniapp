@@ -229,3 +229,33 @@ h3 { font-size: 17px; }
   text-align: center;
   font-size: 14px;
 }
+
+/* --- 2-versiya qo'shimchalari --- */
+.dot-stop { background: var(--warn); }
+.addr-line { display: flex; align-items: center; gap: 8px; }
+.addr-line .addr-btn { flex: 1; }
+.remove-btn { background: var(--bg); border: none; color: var(--hint); width: 32px; height: 32px; border-radius: 50%; font-size: 14px; cursor: pointer; flex-shrink: 0; }
+
+.sheet-list { flex: 1; overflow-y: auto; padding: 0 12px calc(12px + env(safe-area-inset-bottom)); }
+.sheet-row { display: flex; align-items: center; gap: 12px; width: 100%; background: none; border: none; border-bottom: 1px solid var(--line); padding: 14px 4px; color: var(--text); font-size: 15px; text-align: left; cursor: pointer; }
+.sheet-row:active { background: var(--bg); }
+.sheet-icon { width: 24px; text-align: center; font-size: 18px; flex-shrink: 0; }
+.sheet-text { display: flex; flex-direction: column; gap: 2px; }
+.sheet-caption { color: var(--hint); font-size: 13px; padding: 14px 4px 4px; }
+
+.temp-control { display: flex; flex-direction: column; gap: 8px; }
+.preset-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.chip-sm { padding: 8px 10px; font-size: 13px; }
+.chip-sm .hint { display: block; margin-top: 2px; }
+.stepper { display: flex; flex-direction: column; gap: 4px; }
+.stepper-row { display: flex; align-items: center; justify-content: space-between; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.stepper-row button { width: 44px; height: 44px; border: none; background: none; color: var(--btn); font-size: 24px; font-weight: 600; cursor: pointer; }
+.stepper-row button:active { background: var(--line); }
+.stepper-value { font-size: 18px; font-weight: 700; }
+
+.size-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.size-btn { border: 1px solid var(--line); background: var(--bg); color: var(--text); border-radius: 10px; padding: 10px 4px; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 14px; cursor: pointer; }
+.size-btn.active { border-color: var(--btn); background: color-mix(in srgb, var(--btn) 12%, transparent); }
+.size-btn:disabled { opacity: 0.35; }
+
+.leaflet-control-attribution { font-size: 9px !important; }

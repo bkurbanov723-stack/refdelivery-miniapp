@@ -94,6 +94,12 @@ export function Route({ order }) {
         <span className="dot dot-from" />
         <span>{order.from_address}</span>
       </div>
+      {(order.stops || []).map((s, i) => (
+        <div key={i} className="route-row">
+          <span className="dot dot-stop" />
+          <span>{s.address}</span>
+        </div>
+      ))}
       <div className="route-row">
         <span className="dot dot-to" />
         <span>{order.to_address}</span>

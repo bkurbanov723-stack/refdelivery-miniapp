@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { api } from "../../api";
-import OrderMap from "../../components/OrderMap";
 import { errText, useLang, useT } from "../../i18n";
 import { askConfirm, haptic, toast } from "../../tg";
 import { Button, Card, Loading, OrderFacts, Route, StatusBadge } from "../../ui";
 import { fmtDate, money } from "../../utils";
+
+const OrderMap = lazy(() => import("../../components/OrderMap"));
 
 export default function OrderDetail({ id, onBack }) {
   const t = useT();
@@ -50,7 +51,9 @@ export default function OrderDetail({ id, onBack }) {
             <StatusBadge status={o.status} />
           </div>
 
-          <OrderMap order={o} />
+          <Suspense fallback={<div className="order-map" style={{ height: 200 }} />}>
+            <OrderMap order={o} />
+          </Suspense>
 
           <Card>
             <Route order={o} />
@@ -63,6 +66,12 @@ export default function OrderDetail({ id, onBack }) {
               <span className="hint">{t("price")}</span>
               <b>{money(o.price)} {t("sum")}</b>
             </div>
+            {(o.recipient_name || o.recipient_phone) && (
+              <div className="row-between">
+                <span className="hint">{t("recipient")}</span>
+                <span>{[o.recipient_name, o.recipient_phone].filter(Boolean).join(" · ")}</span>
+              </div>
+            )}
             {o.comment && <p className="hint">💬 {o.comment}</p>}
           </Card>
 

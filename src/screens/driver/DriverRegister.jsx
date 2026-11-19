@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api } from "../../api";
+import TempControl from "../../components/TempControl";
 import { errText, useT } from "../../i18n";
 import { haptic, toast } from "../../tg";
 import { Button, Card, Field } from "../../ui";
@@ -49,8 +50,8 @@ export default function DriverRegister({ me, reload }) {
     gross_weight_kg: v?.gross_weight_kg || "",
     curb_weight_kg: v?.curb_weight_kg || "",
     volume_m3: v?.volume_m3 || "",
-    temp_min: v?.temp_min ?? "-18",
-    temp_max: v?.temp_max ?? "5",
+    temp_min: v?.temp_min ?? -20,
+    temp_max: v?.temp_max ?? 5,
   });
   const [saving, setSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -128,10 +129,12 @@ export default function DriverRegister({ me, reload }) {
           <input className="input" type="number" inputMode="decimal" value={form.volume_m3} onChange={set("volume_m3")} />
         </Field>
         <Field label={t("reefer_temp")}>
-          <div className="grid-2">
-            <input className="input" type="number" value={form.temp_min} onChange={set("temp_min")} placeholder={t("temp_from")} />
-            <input className="input" type="number" value={form.temp_max} onChange={set("temp_max")} placeholder={t("temp_to")} />
-          </div>
+          <TempControl
+            presets={false}
+            min={Number(form.temp_min)}
+            max={Number(form.temp_max)}
+            onChange={(a, b) => setForm((f) => ({ ...f, temp_min: a, temp_max: b }))}
+          />
         </Field>
         <Button onClick={save} busy={saving} disabled={!size || !form.model || !form.plate_number}>
           {t("save")}
