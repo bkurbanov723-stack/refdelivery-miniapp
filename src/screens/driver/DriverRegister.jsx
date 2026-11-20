@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { api } from "../../api";
 import TempControl from "../../components/TempControl";
-import { errText, useT } from "../../i18n";
+import { errText, useLang, useT } from "../../i18n";
 import { haptic, toast } from "../../tg";
 import { Button, Card, Field } from "../../ui";
 import { compressImage, sizeForWeight } from "../../utils";
@@ -10,6 +10,8 @@ const DOC_TYPES = ["license", "tech_passport", "vehicle_photo", "reefer_photo"];
 
 function DocTile({ type, doc, onUploaded }) {
   const t = useT();
+  const { lang } = useLang();
+  const rejected = doc?.status === "rejected";
   const [busy, setBusy] = useState(false);
 
   const onFile = async (e) => {
@@ -31,11 +33,18 @@ function DocTile({ type, doc, onUploaded }) {
   };
 
   return (
-    <label className={`doc-tile ${doc ? "done" : ""}`}>
+    <label className={`doc-tile ${doc && !rejected ? "done" : ""}`}
+      style={rejected ? { borderStyle: "solid", borderColor: "var(--danger)" } : undefined}>
       <input type="file" accept="image/*" hidden onChange={onFile} disabled={busy} />
       <span className="doc-name">{t(`doc_${type}`)}</span>
-      <span className={doc ? "ok small" : "hint small"}>
-        {busy ? t("uploading") : doc ? `${t("uploaded")} · ${t("reupload")}` : t("upload")}
+      <span className={rejected ? "error small" : doc ? "ok small" : "hint small"}>
+        {busy
+          ? t("uploading")
+          : rejected
+          ? (lang === "ru" ? "❌ Загрузите заново" : "❌ Qayta yuklang")
+          : doc
+          ? `${t("uploaded")} · ${t("reupload")}`
+          : t("upload")}
       </span>
     </label>
   );
