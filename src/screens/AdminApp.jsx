@@ -135,19 +135,65 @@ function Orders() {
 // ---------------------------------------------------------------------
 // 3. Haydovchilar
 // ---------------------------------------------------------------------
+const DOC_TYPES = ["license", "tech_passport", "vehicle_photo", "reefer_photo"];
+
+// Bu bo'limdagi yangi matnlar (ikki tilda)
+const L = {
+  uz: {
+    incomplete: "📝 To'ldirilmagan",
+    pending: "⏳ Tekshiruvda",
+    vehicle: "Mashina ma'lumoti",
+    missing: "Yuklanmagan",
+    no_vehicle: "Mashina ma'lumoti kiritilmagan",
+    request_fix: "📩 Tuzatishni so'rash",
+    fix_title: "Haydovchiga nimani to'g'rilash yoki yuklashni aytamiz?",
+    fix_comment: "Qo'shimcha izoh (ixtiyoriy)",
+    fix_send: "📩 Haydovchiga yuborish",
+    fix_sent: "Haydovchiga xabar yuborildi ✅",
+    no_docs: "Haydovchi hali hujjat yuklamagan",
+    approve_hint: "Tasdiqlash uchun mashina ma'lumoti va 4 ta hujjat kerak",
+  },
+  ru: {
+    incomplete: "📝 Не заполнено",
+    pending: "⏳ На проверке",
+    vehicle: "Данные машины",
+    missing: "Не загружено",
+    no_vehicle: "Данные машины не заполнены",
+    request_fix: "📩 Запросить исправление",
+    fix_title: "Что водителю нужно исправить или загрузить?",
+    fix_comment: "Комментарий (необязательно)",
+    fix_send: "📩 Отправить водителю",
+    fix_sent: "Сообщение водителю отправлено ✅",
+    no_docs: "Водитель ещё не загрузил документы",
+    approve_hint: "Для подтверждения нужны данные машины и 4 документа",
+  },
+};
+const DOC_ICON = { approved: "✅", pending: "⏳", rejected: "❌" };
+
 function DriverCard({ d, onChanged }) {
   const t = useT();
+  const { lang } = useLang();
+  const l = L[lang] || L.uz;
   const [busy, setBusy] = useState(null);
   const [docs, setDocs] = useState(null);
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState("");
   const v = d.vehicle;
 
-  const run = async (key, action, params) => {
+  const docMap = Object.fromEntries((d.docs || []).map((x) => [x.type, x]));
+  const complete = !!v && DOC_TYPES.every((x) => docMap[x]);
+  const missingItems = [...(v ? [] : ["vehicle"]), ...DOC_TYPES.filter((x) => !docMap[x] || docMap[x].status === "rejected")];
+
+  const [fixing, setFixing] = useState(false);
+  const [fixItems, setFixItems] = useState([]);
+  const [fixComment, setFixComment] = useState("");
+
+  const run = async (key, action, params, okText) => {
     setBusy(key);
     try {
       await api(action, params);
       haptic("success");
+      if (okText) toast(okText);
       await onChanged();
     } catch (e) {
       toast(errText(t, e));
@@ -157,6 +203,11 @@ function DriverCard({ d, onChanged }) {
   };
 
   const showDocs = async () => {
+    if (docs) return setDocs(null);
+    if (!d.docs_count) {
+      setDocs([]);
+      return;
+    }
     setBusy("docs");
     try {
       setDocs(await api("admin_driver_docs", { driver_id: d.user_id }));
@@ -167,13 +218,24 @@ function DriverCard({ d, onChanged }) {
     }
   };
 
-  const statusLabel = { pending: `⏳ ${t("a_pending")}`, approved: `✅ ${t("a_approved")}`, rejected: `❌ ${t("a_rejected")}` };
+  const openFix = () => {
+    setFixItems(missingItems);
+    setFixComment("");
+    setFixing(true);
+    setRejecting(false);
+  };
+  const toggleItem = (x) => setFixItems((list) => (list.includes(x) ? list.filter((y) => y !== x) : [...list, x]));
+
+  let statusLabel;
+  if (d.status === "approved") statusLabel = `✅ ${t("a_approved")}`;
+  else if (d.status === "rejected") statusLabel = `❌ ${t("a_rejected")}`;
+  else statusLabel = complete ? l.pending : l.incomplete;
 
   return (
     <Card>
       <div className="row-between">
         <b>{d.name || "—"}</b>
-        <span className="small">{statusLabel[d.status]}{d.is_blocked ? ` · 🚫 ${t("a_blocked")}` : ""}</span>
+        <span className="small">{statusLabel}{d.is_blocked ? ` · 🚫 ${t("a_blocked")}` : ""}</span>
       </div>
       <div className="small">
         {d.phone && <a href={`tel:${d.phone}`}>{d.phone}</a>}
@@ -185,22 +247,60 @@ function DriverCard({ d, onChanged }) {
           ⚖️ {v.gross_weight_kg} − {v.curb_weight_kg} = <b>{v.payload_kg} kg</b> · {t(`size_${v.body_size}`)}<br />
           🌡 {v.temp_max > 0 ? `+${v.temp_max}` : v.temp_max}…{v.temp_min}°C {v.volume_m3 ? `· ${v.volume_m3} m³` : ""}
         </div>
-      ) : <span className="hint small">🚛 —</span>}
+      ) : <span className="hint small">🚛 {l.no_vehicle}</span>}
+
+      {/* Hujjatlar holati: ✅ tasdiqlangan, ⏳ tekshiruvda, ❌ rad etilgan, ➖ yuklanmagan */}
+      <div className="facts">
+        {DOC_TYPES.map((x) => (
+          <span key={x}>{docMap[x] ? DOC_ICON[docMap[x].status] || "⏳" : "➖"} {t(`doc_${x}`).split(" (")[0]}</span>
+        ))}
+      </div>
       {d.reject_reason && d.status === "rejected" && <span className="hint small">❌ {d.reject_reason}</span>}
 
       <Button variant="secondary" onClick={showDocs} busy={busy === "docs"}>{t("a_show_docs")} ({d.docs_count}/4)</Button>
       {docs && (
-        <div className="doc-imgs">
-          {docs.map((x) => (
-            <a key={x.type} href={x.url} target="_blank" rel="noreferrer">
-              {x.url && <img src={x.url} alt={x.type} loading="lazy" />}
-              <span>{t(`doc_${x.type}`)}</span>
-            </a>
-          ))}
-        </div>
+        docs.length === 0 && !d.docs_count ? (
+          <p className="hint small text-center">{l.no_docs}</p>
+        ) : (
+          <div className="doc-imgs">
+            {DOC_TYPES.map((type) => {
+              const x = docs.find((y) => y.type === type);
+              return x?.url ? (
+                <a key={type} href={x.url} target="_blank" rel="noreferrer">
+                  <img src={x.url} alt={type} loading="lazy" />
+                  <span>{DOC_ICON[x.status] || "⏳"} {t(`doc_${type}`)}</span>
+                </a>
+              ) : (
+                <div key={type} className="doc-missing">
+                  <span>➖</span>
+                  <span className="small">{t(`doc_${type}`)}<br />{l.missing}</span>
+                </div>
+              );
+            })}
+          </div>
+        )
       )}
 
-      {rejecting ? (
+      {fixing ? (
+        <div className="fix-box">
+          <b className="small">{l.fix_title}</b>
+          {["vehicle", ...DOC_TYPES].map((x) => (
+            <label key={x} className="check small">
+              <input type="checkbox" checked={fixItems.includes(x)} onChange={() => toggleItem(x)} />
+              <span>{x === "vehicle" ? l.vehicle : t(`doc_${x}`)}</span>
+            </label>
+          ))}
+          <input className="input" placeholder={l.fix_comment} value={fixComment} onChange={(e) => setFixComment(e.target.value)} />
+          <div className="btn-row">
+            <Button variant="secondary" onClick={() => setFixing(false)}>{t("close")}</Button>
+            <Button busy={busy === "fix"} disabled={!fixItems.length && !fixComment.trim()}
+              onClick={() => run("fix", "admin_request_fix",
+                { driver_id: d.user_id, items: fixItems, comment: fixComment }, l.fix_sent).then(() => setFixing(false))}>
+              {l.fix_send}
+            </Button>
+          </div>
+        </div>
+      ) : rejecting ? (
         <>
           <input className="input" placeholder={t("a_reject_reason")} value={reason} onChange={(e) => setReason(e.target.value)} />
           <div className="btn-row">
@@ -212,21 +312,26 @@ function DriverCard({ d, onChanged }) {
           </div>
         </>
       ) : (
-        <div className="btn-row">
+        <>
           {d.status !== "approved" && (
-            <Button busy={busy === "approve"}
-              onClick={() => run("approve", "admin_set_driver", { driver_id: d.user_id, status: "approved" })}>
-              {t("a_approve")}
+            complete ? (
+              <Button busy={busy === "approve"}
+                onClick={() => run("approve", "admin_set_driver", { driver_id: d.user_id, status: "approved" })}>
+                {t("a_approve")}
+              </Button>
+            ) : <span className="hint small text-center">{l.approve_hint}</span>
+          )}
+          <Button variant="secondary" onClick={openFix}>{l.request_fix}</Button>
+          <div className="btn-row">
+            {d.status !== "rejected" && (
+              <Button variant="danger" onClick={() => setRejecting(true)}>{t("a_reject")}</Button>
+            )}
+            <Button variant="secondary" busy={busy === "block"}
+              onClick={() => run("block", "admin_block_user", { user_id: d.user_id, blocked: !d.is_blocked })}>
+              {d.is_blocked ? t("a_unblock") : t("a_block")}
             </Button>
-          )}
-          {d.status !== "rejected" && (
-            <Button variant="danger" onClick={() => setRejecting(true)}>{t("a_reject")}</Button>
-          )}
-          <Button variant="secondary" busy={busy === "block"}
-            onClick={() => run("block", "admin_block_user", { user_id: d.user_id, blocked: !d.is_blocked })}>
-            {d.is_blocked ? t("a_unblock") : t("a_block")}
-          </Button>
-        </div>
+          </div>
+        </>
       )}
     </Card>
   );
@@ -234,18 +339,29 @@ function DriverCard({ d, onChanged }) {
 
 function Drivers() {
   const t = useT();
-  const [status, setStatus] = useState("pending");
-  const { data, error, load } = useLoad("admin_drivers", { status }, [status]);
+  const { lang } = useLang();
+  const l = L[lang] || L.uz;
+  const [filter, setFilter] = useState("pending");
+  const apiStatus = filter === "incomplete" ? "pending" : filter;
+  const { data, error, load } = useLoad("admin_drivers", { status: apiStatus }, [apiStatus]);
+
+  // Tekshiruvdagilarni ikkiga ajratamiz: to'liq to'ldirganlar va to'ldirmaganlar
+  const isComplete = (d) => !!d.vehicle && DOC_TYPES.every((x) => (d.docs || []).some((y) => y.type === x));
+  let list = data;
+  if (data && filter === "pending") list = data.filter(isComplete);
+  if (data && filter === "incomplete") list = data.filter((d) => !isComplete(d));
+
   return (
     <div className="page">
-      <FilterRow value={status} onChange={setStatus} options={[
-        ["pending", `⏳ ${t("a_pending")}`], ["approved", `✅ ${t("a_approved")}`], ["rejected", `❌ ${t("a_rejected")}`], ["all", t("a_all")],
+      <FilterRow value={filter} onChange={setFilter} options={[
+        ["pending", l.pending], ["incomplete", l.incomplete], ["approved", `✅ ${t("a_approved")}`],
+        ["rejected", `❌ ${t("a_rejected")}`], ["all", t("a_all")],
       ]} />
       {error && <p className="error">{errText(t, error)}</p>}
       {!data && !error && <Loading />}
-      {data?.length === 0 && <p className="hint text-center">—</p>}
+      {list?.length === 0 && <p className="hint text-center">—</p>}
       <div className="admin-list">
-        {data?.map((d) => <DriverCard key={d.user_id} d={d} onChanged={load} />)}
+        {list?.map((d) => <DriverCard key={d.user_id} d={d} onChanged={load} />)}
       </div>
     </div>
   );
@@ -313,6 +429,24 @@ function Tariffs() {
 }
 
 // ---------------------------------------------------------------------
+// Admin panel ekranga sig'ishi uchun: hamma narsa yonga emas, pastga qarab joylashadi
+const ADMIN_CSS = `
+.app > * { min-width: 0; }
+.admin-wrap { width: 100%; min-width: 0; overflow-x: hidden; }
+.admin-wrap .admin-tabs { min-width: 0; flex-wrap: wrap; overflow: visible; }
+.admin-wrap .admin-tabs button { padding: 7px 12px; font-size: 13px; }
+.admin-wrap .row-between { flex-wrap: wrap; }
+.admin-wrap .stat-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+.admin-wrap .stat b { font-size: 18px; word-break: break-word; }
+.admin-wrap .tariff-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+.admin-wrap .btn-row .btn { min-width: 0; }
+.admin-wrap .card { min-width: 0; overflow-wrap: anywhere; }
+.admin-wrap .doc-missing { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  height: 120px; border: 1.5px dashed var(--line); border-radius: 10px; text-align: center; color: var(--hint); }
+.admin-wrap .fix-box { display: flex; flex-direction: column; gap: 8px; background: var(--bg); border-radius: 12px; padding: 10px; }
+@media (max-width: 699px) { .admin-wrap .admin-list { display: flex; flex-direction: column; gap: 10px; } }
+`;
+
 export default function AdminApp({ onExit }) {
   const t = useT();
   const [tab, setTab] = useState("stats");
@@ -320,6 +454,7 @@ export default function AdminApp({ onExit }) {
     ["drivers", `🚚 ${t("a_drivers")}`], ["tariffs", `💰 ${t("a_tariffs")}`]];
   return (
     <div className="admin-wrap">
+      <style>{ADMIN_CSS}</style>
       <div className="page" style={{ paddingBottom: 0 }}>
         <div className="row-between">
           <h2>{t("admin_panel")}</h2>
