@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useT } from "../../i18n";
+import { useLang, useT } from "../../i18n";
 import { Tabs } from "../../ui";
 import Profile from "../Profile";
 import MyOrders from "./MyOrders";
@@ -8,6 +8,7 @@ import OrderDetail from "./OrderDetail";
 
 export default function ClientApp({ me, refs, switchMode, onAdmin }) {
   const t = useT();
+  const { lang } = useLang();
   const [tab, setTab] = useState("new");
   const [openId, setOpenId] = useState(null);
 
@@ -25,7 +26,7 @@ export default function ClientApp({ me, refs, switchMode, onAdmin }) {
         onChange={(v) => { setTab(v); setOpenId(null); }}
         tabs={[
           { id: "new", icon: "➕", label: t("tab_new") },
-          { id: "orders", icon: "📦", label: t("tab_orders") },
+          { id: "orders", icon: "📦", label: lang === "ru" ? "Мои заказы" : "Buyurtmalarim" },
           { id: "profile", icon: "👤", label: t("tab_profile") },
         ]}
       />
