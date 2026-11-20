@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../../api";
+import LiveGuide from "../../components/LiveGuide";
 import { errText, useLang, useT } from "../../i18n";
 import { haptic, toast } from "../../tg";
 import { Button, Card, Loading, OrderFacts, Route } from "../../ui";
@@ -78,6 +79,7 @@ export default function AvailableOrders({ me, reload, onAccepted }) {
         </div>
       </Card>
 
+      {online && <LiveGuide />}
       {!online && <p className="hint text-center">{t("offline_hint")}</p>}
       {online && !orders && !error && <Loading />}
       {error && <p className="error">{errText(t, error)}</p>}
