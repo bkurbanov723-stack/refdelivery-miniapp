@@ -1,5 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { api } from "../../api";
+import ChatSheet from "../../components/ChatSheet";
 import { errText, useLang, useT } from "../../i18n";
 import { askConfirm, haptic, toast } from "../../tg";
 import { Button, Card, Loading, OrderFacts, Route, StatusBadge } from "../../ui";
@@ -43,6 +44,7 @@ export default function OrderDetail({ id, onBack }) {
   const [o, setO] = useState(null);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
 
   const load = useCallback(
     () => api("order", { order_id: id }).then((x) => (setO(x), setError(null))).catch(setError),
@@ -71,6 +73,10 @@ export default function OrderDetail({ id, onBack }) {
     }
   };
 
+  if (chatOpen && o) {
+    return <ChatSheet orderId={o.id} title={t("order_n", { id: o.id })} onClose={() => setChatOpen(false)} />;
+  }
+
   return (
     <div className="page">
       <button className="link-btn" onClick={onBack}>{t("back")}</button>
@@ -96,8 +102,8 @@ export default function OrderDetail({ id, onBack }) {
               <div className="hint">
                 {o.vehicle?.model} · {o.vehicle?.plate_number} · ⭐ {o.driver.rating}
               </div>
-              {o.driver.phone && isActive(o.status) && (
-                <a className="btn btn-secondary" href={`tel:${o.driver.phone}`}>{t("call")} {o.driver.phone}</a>
+              {isActive(o.status) && (
+                <button className="btn btn-primary" onClick={() => setChatOpen(true)}>{t("chat_with_driver")}</button>
               )}
             </Card>
           )}

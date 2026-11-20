@@ -33,6 +33,8 @@ export default function NewOrder({ refs, onCreated }) {
   const need = sizeForWeight(w);
   const effSize = size && (!need || SIZES.indexOf(size) > SIZES.indexOf(need)) ? size : need;
   const ready = points.every(Boolean);
+  const phoneDigits = recPhone.replace(/\D/g, "");
+  const phoneOk = phoneDigits.length === 9 || (phoneDigits.length >= 11 && phoneDigits.length <= 15);
 
   // Narx darhol, serverga bormasdan hisoblanadi
   const est = useMemo(() => {
@@ -202,11 +204,11 @@ export default function NewOrder({ refs, onCreated }) {
       </Card>
 
       <Card>
-        <span className="field-label">{t("recipient")}</span>
-        <div className="grid-2">
-          <input className="input" value={recName} onChange={(e) => setRecName(e.target.value)} placeholder={t("recipient_name")} />
-          <input className="input" type="tel" inputMode="tel" value={recPhone} onChange={(e) => setRecPhone(e.target.value)} placeholder="+998" />
-        </div>
+        <Field label={t("recipient_required")} hint={t("recipient_phone_hint")}>
+          <input className={`input ${recPhone && !phoneOk ? "input-bad" : ""}`} type="tel" inputMode="tel"
+            value={recPhone} onChange={(e) => setRecPhone(e.target.value)} placeholder="+998 90 123 45 67" />
+        </Field>
+        <input className="input" value={recName} onChange={(e) => setRecName(e.target.value)} placeholder={t("recipient_name")} />
         <Field label={t("comment")}>
           <textarea className="input" rows={2} value={comment} onChange={(e) => setComment(e.target.value)} />
         </Field>
@@ -232,7 +234,8 @@ export default function NewOrder({ refs, onCreated }) {
         )}
       </Card>
 
-      <Button onClick={submit} busy={sending} disabled={!est?.price}>
+      {est?.price && !phoneOk && <p className="error small text-center">{t("err_RECIPIENT_PHONE_REQUIRED")}</p>}
+      <Button onClick={submit} busy={sending} disabled={!est?.price || !phoneOk}>
         {t("create_order")}
       </Button>
     </div>

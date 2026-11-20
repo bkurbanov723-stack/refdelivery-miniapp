@@ -184,6 +184,9 @@ function DriverCard({ d, onChanged }) {
   const complete = !!v && DOC_TYPES.every((x) => docMap[x]);
   const missingItems = [...(v ? [] : ["vehicle"]), ...DOC_TYPES.filter((x) => !docMap[x] || docMap[x].status === "rejected")];
 
+  const [topup, setTopup] = useState(false);
+  const [amount, setAmount] = useState("");
+  const [topupComment, setTopupComment] = useState("");
   const [fixing, setFixing] = useState(false);
   const [fixItems, setFixItems] = useState([]);
   const [fixComment, setFixComment] = useState("");
@@ -248,6 +251,33 @@ function DriverCard({ d, onChanged }) {
           🌡 {v.temp_max > 0 ? `+${v.temp_max}` : v.temp_max}…{v.temp_min}°C {v.volume_m3 ? `· ${v.volume_m3} m³` : ""}
         </div>
       ) : <span className="hint small">🚛 {l.no_vehicle}</span>}
+
+      {/* Balans: komissiya har yetkazishda avtomatik yechiladi */}
+      <div className={`balance-card ${d.balance < 0 ? "debt" : ""}`} style={{ cursor: "default", padding: "8px 10px" }}>
+        <div className="row-between">
+          <span className="small">{d.balance < 0 ? t("balance_debt") : t("balance")}</span>
+          <b style={{ fontSize: 16 }}>{money(d.balance || 0)} {t("sum")}</b>
+        </div>
+        {topup ? (
+          <>
+            <input className="input" type="text" inputMode="numeric" placeholder={t("a_topup_amount")}
+              value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^\d-]/g, ""))} />
+            <input className="input" placeholder={t("a_topup_comment")} value={topupComment}
+              onChange={(e) => setTopupComment(e.target.value)} />
+            <div className="btn-row">
+              <Button variant="secondary" onClick={() => setTopup(false)}>{t("close")}</Button>
+              <Button busy={busy === "topup"} disabled={!Number(amount)}
+                onClick={() => run("topup", "admin_topup",
+                  { driver_id: d.user_id, amount: Number(amount), comment: topupComment }, t("a_topup_done"))
+                  .then(() => { setTopup(false); setAmount(""); setTopupComment(""); })}>
+                {t("save")}
+              </Button>
+            </div>
+          </>
+        ) : (
+          <button className="link-btn small" onClick={() => setTopup(true)}>{t("a_topup")}</button>
+        )}
+      </div>
 
       {/* Hujjatlar holati: ✅ tasdiqlangan, ⏳ tekshiruvda, ❌ rad etilgan, ➖ yuklanmagan */}
       <div className="facts">

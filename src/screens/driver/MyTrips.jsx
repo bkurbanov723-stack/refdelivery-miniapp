@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../../api";
 import { errText, useLang, useT } from "../../i18n";
 import { BOT_USERNAME } from "../../config";
+import ChatSheet from "../../components/ChatSheet";
 import { askConfirm, haptic, openLink, tg, toast } from "../../tg";
 import { Button, Card, Loading, OrderFacts, Route, StatusBadge } from "../../ui";
 import { compressImage, fmtDate, isActive, minutesSince, money, routeUrl } from "../../utils";
@@ -47,7 +48,7 @@ function LiveHint() {
 
 const NEXT = { accepted: "on_the_way", on_the_way: "picked_up", picked_up: "delivered" };
 
-function ActiveTrip({ o, onChanged }) {
+function ActiveTrip({ o, onChanged, onChat }) {
   const t = useT();
   const { lang } = useLang();
   const [busy, setBusy] = useState(false);
@@ -147,7 +148,7 @@ function ActiveTrip({ o, onChanged }) {
       {o.client && (
         <div className="row-between">
           <span>{t("client")}: <b>{o.client.name}</b></span>
-          {o.client.phone && <a className="link-btn" href={`tel:${o.client.phone}`}>{t("call")}</a>}
+          <button className="link-btn" onClick={() => onChat(o)}>{t("chat_with_client")}</button>
         </div>
       )}
 
@@ -183,6 +184,17 @@ export default function MyTrips() {
   const { lang } = useLang();
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
+  const [chatOrder, setChatOrder] = useState(null);
+  const [history, setHistory] = useState(null);
+
+  const toggleHistory = async () => {
+    if (history) return setHistory(null);
+    try {
+      setHistory((await api("my_balance")).transactions);
+    } catch (e) {
+      toast(errText(t, e));
+    }
+  };
 
   const load = useCallback(
     () => api("my_trips").then((d) => (setData(d), setError(null))).catch(setError),
@@ -200,10 +212,29 @@ export default function MyTrips() {
   useTripLocation(active.length > 0);
 
   if (!data && !error) return <Loading />;
+  if (chatOrder) {
+    return <ChatSheet orderId={chatOrder.id} title={t("order_n", { id: chatOrder.id })} onClose={() => setChatOrder(null)} />;
+  }
 
   return (
     <div className="page">
       {error && <p className="error">{errText(t, error)}</p>}
+      {data && (
+        <div className={`balance-card ${data.balance < 0 ? "debt" : ""}`} onClick={toggleHistory}>
+          <div className="row-between">
+            <span>{data.balance < 0 ? t("balance_debt") : t("balance")}</span>
+            <b>{money(data.balance)} {t("sum")}</b>
+          </div>
+          <span className="hint small">{t("balance_note")}</span>
+          <span className="link-btn small">{t("balance_history")} {history ? "▲" : "▼"}</span>
+          {history && history.map((x) => (
+            <div key={x.id} className="row-between small">
+              <span>{t(`tx_${x.kind}`)}{x.order_id ? ` #${x.order_id}` : ""}{x.comment ? ` · ${x.comment}` : ""}</span>
+              <span className={x.amount < 0 ? "error" : "ok"}>{x.amount > 0 ? "+" : ""}{money(x.amount)}</span>
+            </div>
+          ))}
+        </div>
+      )}
       {data && (
         <div className="stats">
           <div><span className="hint small">{t("earn_today")}</span><b>{money(data.earnings_today)}</b></div>
@@ -215,7 +246,7 @@ export default function MyTrips() {
       <h3>{t("active_trips")}</h3>
       {active.length === 0 && <p className="hint">{t("no_active")}</p>}
       {active.length > 0 && <LiveHint />}
-      {active.map((o) => <ActiveTrip key={o.id} o={o} onChanged={load} />)}
+      {active.map((o) => <ActiveTrip key={o.id} o={o} onChanged={load} onChat={setChatOrder} />)}
 
       {done.length > 0 && <h3>{t("done_trips")}</h3>}
       {done.map((o) => (
